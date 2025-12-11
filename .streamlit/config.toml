@@ -10,3 +10,10 @@ showErrorDetails = true
 
 [logger]
 level = "info"
+
+[server]
+headless = true
+port = 7860
+enableXsrfProtection = false
+enableCORS = false
+maxUploadSize = 200
