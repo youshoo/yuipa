@@ -177,7 +177,7 @@ COMPOUND_WORDS = [
     DictEntry("aroi",     "อร่อย",   450),
     DictEntry("phuying",  "ผู้หญิง",  500),
     DictEntry("sawatdii", "สวัสดี",  1000),
-    DictEntry("sabaay",    "สบาย",    400),
+    DictEntry("sabay",    "สบาย",    400),
     DictEntry("sanuk",    "สนุก",    400),
     DictEntry("sanam",    "สนาม",    300),
     DictEntry("arak",     "อรักษ์",  300),
@@ -256,7 +256,7 @@ def alt_coda_suggestions(buffer):
     if coda_key not in ALT_CODA_FORMS: return []
     default_coda = CODA_MAP.get(coda_key, "")
     base_thai = convert_token(buffer)
-    if not base_thai or base_thai == "?" or not base_thai.endswith(default_coda): return []
+    if not base_thai or base_thai == "?": return []
     base_stem = base_thai[: -len(default_coda)]
     alts = []
     for alt in ALT_CODA_FORMS[coda_key]:
@@ -298,7 +298,7 @@ def suggest(buffer: str, max_suggestions: int = 8) -> List[DictEntry]:
 
 st.set_page_config(page_title="Thai IME", page_icon="🇹🇭", layout="centered")
 
-# Initialize session state for the drafting area
+# Initialize session state
 if 'draft_text' not in st.session_state:
     st.session_state['draft_text'] = ""
 if 'input_text' not in st.session_state:
@@ -312,9 +312,38 @@ def append_word(word):
         st.session_state['draft_text'] = word
     st.session_state['input_text'] = "" # Clear input
 
+# --- SIDEBAR: VOWEL MAPPING (Replaces Common Words) ---
+with st.sidebar:
+    st.title("Vowel Mapping")
+    st.markdown("""
+    | Roman | Pre | Stack | Post | Ex. (k) |
+    | :--- | :---: | :---: | :---: | :--- |
+    | **a** | - | - | ะ | กะ |
+    | **aa** | - | - | า | กา |
+    | **i** | - | ิ | - | กิ |
+    | **ii** | - | ี | - | กี |
+    | **u** | - | ุ | - | กุ |
+    | **uu** | - | ู | - | กู |
+    | **e** | เ | ็ | - | เก็น |
+    | **ee** | เ | - | - | เก |
+    | **o** | โ | - | ะ | โกะ |
+    | **oo** | โ | - | - | โก |
+    | **ae** | แ | - | ะ | แกะ |
+    | **aee** | แ | - | - | แก |
+    | **oe** | เ | - | อะ | เกอะ |
+    | **or** | เ | - | าะ | เกาะ |
+    | **ia** | เ | ี | ย | เกีย |
+    | **ua** | - | ั | ว | กัว |
+    | **ai** | ไ | - | - | ไก |
+    | **aw** | เ | - | า | เกา |
+    | **uea** | เ | ื | อ | เกือ |
+    | **am** | - | - | ำ | กำ |
+    """)
+
+# --- MAIN PAGE ---
 st.title("🇹🇭 Thai Word Converter")
 
-# 1. Drafting Area (The "Text Bar" to copy/paste)
+# 1. Drafting Area
 st.markdown("##### Result Text (Copy/Edit here)")
 text_area = st.text_area(
     label="Result", 
@@ -341,7 +370,6 @@ if roman_input:
         cols = st.columns(4)
         for i, s in enumerate(suggestions):
             with cols[i % 4]:
-                # On click, append word to draft text
                 st.button(
                     f"{s.thai}\n({s.roman})", 
                     key=f"btn_{i}", 
@@ -350,32 +378,3 @@ if roman_input:
                 )
     else:
         st.caption("No suggestions found.")
-
-# 4. Vowel Mapping Reference (Bottom Expander)
-with st.expander("Show Vowel Mapping Reference Table"):
-    st.markdown("""
-    | Roman Input | Pre | Stacking (Main) | Post | Thai Example (k) |
-    | :--- | :---: | :---: | :---: | :--- |
-    | **a** | - | - | ะ | กะ (ka) |
-    | **aa** | - | - | า | กา (kaa) |
-    | **i** | - | ิ | - | กิ (ki) |
-    | **ii** | - | ี | - | กี (kii) |
-    | **u** | - | ุ | - | กุ (ku) |
-    | **uu** | - | ู | - | กู (kuu) |
-    | **e** | เ | ็ | - | เก็น (ken) |
-    | **ee** | เ | - | - | เก (kee) |
-    | **o** | โ | - | ะ | โกะ (ko) |
-    | **oo** | โ | - | - | โก (koo) |
-    | **ae** / **ea** | แ | - | ะ | แกะ (kae) |
-    | **aee** / **eaa** | แ | - | - | แก (kaee) |
-    | **oe** / **err** | เ | - | อะ | เกอะ (koe) |
-    | **oee** / **er** | เ | - | อ | เกอ (koee) |
-    | **or** | เ | - | าะ | เกาะ (kor) |
-    | **orr** | - | - | อ | กอ (korr) |
-    | **ia** | เ | ี | ย | เกีย (kia) |
-    | **ua** | - | ั | ว | กัว (kua) |
-    | **ai** / **ay** | ไ | - | - | ไก (kai) |
-    | **aw** | เ | - | า | เกา (kaw) |
-    | **uea** | เ | ื | อ | เกือ (kuea) |
-    | **am** | - | - | ำ | กำ (kam) |
-    """)
