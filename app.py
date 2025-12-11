@@ -1,11 +1,5 @@
 import streamlit as st
-import sys
-
-try:
-    from main import convert_phrase, suggest, convert_token
-except ImportError as e:
-    st.error(f"Error importing main module: {e}")
-    sys.exit(1)
+from main import convert_phrase, suggest, convert_token
 
 st.set_page_config(
     page_title="Thai IME - Romanization Converter",

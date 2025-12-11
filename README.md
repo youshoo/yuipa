@@ -2,6 +2,19 @@
 
 Thai Romanization to Thai Script Converter with Streamlit Web Demo
 
+## 🚀 Quick Start
+
+### Run Locally
+```bash
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+The app will open at `http://localhost:8501`
+
+### Try Online
+Visit the [live demo](https://yuipa-demo.streamlit.app) hosted on Streamlit Cloud
+
 ## Features
 
 - Convert romanized Thai spelling to Thai script
@@ -9,29 +22,15 @@ Thai Romanization to Thai Script Converter with Streamlit Web Demo
 - Alternative spelling suggestions
 - Web-based UI with Streamlit
 
-## Setup
-
-### 1. Install dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Run the Streamlit app
-```bash
-streamlit run app.py
-```
-
-The app will open at `http://localhost:8501`
-
 ## Usage
 
 ### Phrase Conversion
-Enter romanized Thai text (space-separated words) and get instant conversion:
+Enter romanized Thai text (space-separated words):
 - Input: `aroi khon baan`
 - Output: `อร่อย คน บ้าน`
 
 ### Word Converter
-Enter individual words (with optional tone markers 1-5):
+Enter individual words with optional tone markers (1-5):
 - `aroi` → อร่อย
 - `khon3` → คน
 - `baan` → บ้าน
@@ -43,8 +42,6 @@ Append 1-5 to specify tone:
 - `3` = high tone
 - `4` = rising tone
 - `5` = extra high tone
-
-Example: `khao3` → เขา (high tone "he/she")
 
 ## Examples
 
