@@ -360,21 +360,3 @@ def suggest(buffer: str, max_suggestions: int = 8) -> List[DictEntry]:
 
     results.sort(key=lambda e: e.freq, reverse=True)
     return results[:max_suggestions]
-
-# ===============================
-# 4. REPL TEST
-# ===============================
-
-if __name__ == "__main__":
-    print("Thai IME lab - V10 (Added 'aroi')")
-    print("Try: aroi, aroy, khamooy, samaakhom ...")
-    while True:
-        buf = input("\nroman> ").strip()
-        if buf.lower() in {"quit", "exit"}: break
-        base = convert_phrase(buf)
-        print(" base:", base)
-        su = suggest(buf)
-        if su:
-            print(" suggestions:")
-            for e in su: print(f"  - {e.roman:10s} → {e.thai}")
-        else: print(" (no suggestions)")
