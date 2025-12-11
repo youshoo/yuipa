@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 # ===============================
-# 1. MAPPINGS
+# 1. MAPPINGS & DATA
 # ===============================
 
 CONSONANT_ONSET = {
@@ -23,19 +23,11 @@ CONSONANT_ONSET = {
 ONSET_KEYS = sorted(CONSONANT_ONSET.keys(), key=len, reverse=True)
 
 ALT_ONSET_FORMS = {
-    "th": ["ถ", "ท", "ธ", "ฒ", "ฐ"],
-    "ph": ["ผ", "พ", "ภ"],
-    "ch": ["ช", "ฉ", "ฌ"],
-    "s":  ["ส", "ซ", "ศ", "ษ"],
-    "h":  ["ห", "ฮ"],
-    "y":  ["ย", "ญ"],
-    "f":  ["ฟ", "ฝ"],
-    "k":  ["ก", "ไก"], 
-    "kh": ["ข", "ค", "ฆ"],
-    "d":  ["ด", "ฎ"],
-    "t":  ["ต", "ฏ"],
-    "n":  ["น", "ณ"],
-    "l":  ["ล", "ฬ"],
+    "th": ["ถ", "ท", "ธ", "ฒ", "ฐ"], "ph": ["ผ", "พ", "ภ"],
+    "ch": ["ช", "ฉ", "ฌ"], "s":  ["ส", "ซ", "ศ", "ษ"],
+    "h":  ["ห", "ฮ"], "y":  ["ย", "ญ"], "f":  ["ฟ", "ฝ"],
+    "k":  ["ก", "ไก"], "kh": ["ข", "ค", "ฆ"], "d":  ["ด", "ฎ"],
+    "t":  ["ต", "ฏ"], "n":  ["น", "ณ"], "l":  ["ล", "ฬ"],
 }
 
 ALT_CODA_FORMS = {
@@ -52,27 +44,29 @@ VOWEL_MAP = {
     "e":  ("เ", "็",  ""),  "ee": ("เ", "",   ""), 
     "o":  ("โ", "",   "ะ"), "oo": ("โ", "",   ""), 
     "ae": ("แ", "",   "ะ"), "aee":("แ", "",   ""),
-    "ea": ("แ", "",   "ะ"), "eaa":("แ", "",   ""),
+    "ea": ("แ", "",   "ะ"), "eaa":("แ", "",   ""),    
     "oe": ("เ", "",   "อะ"),"oee":("เ", "",   "อ"),
     "err":("เ", "",   "อะ"),"er": ("เ", "",   "อ"),
     "or": ("เ", "",   "าะ"),"orr":("",  "",   "อ"),
-    "ia": ("เ", "ี",  "ย"), "ua": ("", "ั",  "ว"),
+    "ia": ("เ", "ี",  "ย"), "ua": ("", "ั",  "ว"),    
     "ai": ("ไ", "",   ""),  "ay": ("ไ", "",   ""), 
-    "aw": ("เ", "",   "า"), "uea":("เ", "ื", "อ"),
+    "aw": ("เ", "",   "า"), "uea":("เ", "ื", "อ"),    
     "am": ("", "",   "ำ"),    
 }
 VOWEL_KEYS = sorted(VOWEL_MAP.keys(), key=len, reverse=True)
 
-TONE_MAP = {"1": "", "2": "่", "3": "้", "4": "๊", "5": "๋"}
+TONE_MAP = {"1": "Mid", "2": "่ (Low)", "3": "้ (Falling)", "4": "๊ (High)", "5": "๋ (Rising)"}
 CODA_MAP = {"ng": "ง", "k": "ก", "t": "ด", "p": "บ", "m": "ม", "n": "น", "w": "ว", "y": "ย"}
 CODA_KEYS = sorted(CODA_MAP.keys(), key=len, reverse=True)
 
 # ===============================
-# 2. CORE CONVERSION
+# 2. CORE CONVERSION LOGIC
 # ===============================
 
 def split_tone(s: str):
-    if s and s[-1] in TONE_MAP: return s[:-1], TONE_MAP[s[-1]]
+    # Map back to simple char for processing
+    t_map = {"1": "", "2": "่", "3": "้", "4": "๊", "5": "๋"}
+    if s and s[-1] in t_map: return s[:-1], t_map[s[-1]]
     return s, ""
 
 def match_prefix(keys, s):
@@ -95,7 +89,8 @@ def assemble(onset_thai: str, vowel_key: str, tone: str) -> str:
     onset_thai = onset_thai or "ก"
     pre, main, post = VOWEL_MAP[vowel_key]
     if len(onset_thai) > 1:
-        return pre + onset_thai[0] + onset_thai[1] + main + tone + post
+        c1, c2 = onset_thai[0], onset_thai[1]
+        return pre + c1 + c2 + main + tone + post
     return pre + onset_thai + main + tone + post
 
 def convert_syllable(roman: str) -> Optional[str]:
@@ -117,16 +112,15 @@ def convert_syllable(roman: str) -> Optional[str]:
     coda_key, _ = match_coda(after)
     coda_thai = CODA_MAP.get(coda_key, "")
 
+    # Rules
     if vowel_key == "o" and coda_thai:
         onset_thai = onset_thai or "ก"
         if len(onset_thai) > 1: return onset_thai[0] + onset_thai[1] + tone + coda_thai
         return onset_thai + tone + coda_thai
-
     if vowel_key == "a" and coda_thai:
         onset_thai = onset_thai or "ก"
         if len(onset_thai) > 1: return onset_thai[0] + onset_thai[1] + "ั" + tone + coda_thai
         return onset_thai + "ั" + tone + coda_thai
-
     if vowel_key in ("er", "oee") and coda_thai in {"ม", "น", "ง"}:
         onset_thai = onset_thai or "ก"
         if len(onset_thai) > 1: return "เ" + onset_thai[0] + onset_thai[1] + "ิ" + tone + coda_thai
@@ -165,46 +159,22 @@ BASE_DICTIONARY = [
 ]
 
 COMPOUND_WORDS = [
-    DictEntry("khanom",   "ขนม",     500),
-    DictEntry("?aacaan",  "อาจารย์", 500),
-    DictEntry("aacaan",   "อาจารย์", 500),
-    DictEntry("ajarn",    "อาจารย์", 500),
-    DictEntry("?aahaan",  "อาหาร",   500),
-    DictEntry("aahaan",   "อาหาร",   500),
-    DictEntry("?arory",   "อร่อย",   500),
-    DictEntry("arory",    "อร่อย",   500),
-    DictEntry("aroy",     "อร่อย",   450), 
-    DictEntry("aroi",     "อร่อย",   450),
-    DictEntry("phuying",  "ผู้หญิง",  500),
-    DictEntry("sawatdii", "สวัสดี",  1000),
-    DictEntry("sabay",    "สบาย",    400),
-    DictEntry("sanuk",    "สนุก",    400),
-    DictEntry("sanam",    "สนาม",    300),
-    DictEntry("arak",     "อรักษ์",  300),
-    DictEntry("talaat",   "ตลาด",    300),
-    DictEntry("thalay",   "ทะเล",    300),
-    DictEntry("welaa",    "เวลา",    300),
-    DictEntry("naka",     "นะคะ",    300),
-    DictEntry("khrap",    "ครับ",    300),
+    DictEntry("khanom", "ขนม", 500), DictEntry("ajarn", "อาจารย์", 500),
+    DictEntry("?aacaan", "อาจารย์", 500), DictEntry("aacaan", "อาจารย์", 500),
+    DictEntry("arory", "อร่อย", 500), DictEntry("aroy", "อร่อย", 450), 
+    DictEntry("aroi", "อร่อย", 450), DictEntry("phuying", "ผู้หญิง", 500),
+    DictEntry("sawatdii", "สวัสดี", 1000), DictEntry("sabay", "สบาย", 400),
+    DictEntry("sanuk", "สนุก", 400), DictEntry("sanam", "สนาม", 300),
     # Pseudo-clusters
-    DictEntry("sabaay",   "สบาย",    400),
-    DictEntry("sadaeng",  "แสดง",    350),
-    DictEntry("sathaanii","สถานี",   350),
-    DictEntry("satrii",   "สตรี",    300),
-    DictEntry("thanon",   "ถนน",     450),
-    DictEntry("samut",    "สมุด",    350),
-    DictEntry("samoe",    "เสมอ",    350),
-    DictEntry("sanaam",   "สนาม",    350),
-    DictEntry("chalaat",  "ฉลาด",    350),
-    DictEntry("phanaek",  "แผนก",    300),
-    DictEntry("chalaam",  "ฉลาม",    300),
-    DictEntry("khaya",    "ขยะ",     300),
-    DictEntry("sara",     "สระ",     300),
-    DictEntry("sataem",   "สแตมป์",  250),
-    DictEntry("khamooy",   "ขโมย",    350),
-    DictEntry("samaakhom", "สมาคม",   300),
-    DictEntry("samaachik", "สมาชิก",   300),
-    DictEntry("samaathi",  "สมาธิ",    300),
+    DictEntry("sabaay", "สบาย", 400), DictEntry("sadaeng", "แสดง", 350),
+    DictEntry("sathaanii","สถานี", 350), DictEntry("satrii", "สตรี", 300),
+    DictEntry("thanon", "ถนน", 450), DictEntry("samut", "สมุด", 350),
+    DictEntry("samoe", "เสมอ", 350), DictEntry("sanaam", "สนาม", 350),
+    DictEntry("chalaat", "ฉลาด", 350), DictEntry("phanaek", "แผนก", 300),
+    DictEntry("chalaam", "ฉลาม", 300), DictEntry("khaya", "ขยะ", 300),
+    DictEntry("sara", "สระ", 300), DictEntry("sataem", "สแตมป์", 250),
+    DictEntry("khamooy", "ขโมย", 350), DictEntry("samaakhom", "สมาคม", 300),
+    DictEntry("samaachik", "สมาชิก", 300), DictEntry("samaathi", "สมาธิ", 300),
 ]
 
 AI_IRREGULARS = [
@@ -213,12 +183,7 @@ AI_IRREGULARS = [
     DictEntry("chay", "ใช่", 200),
 ]
 
-VOWEL_SUGGESTIONS = [
-    DictEntry("a", "อะ", 150), DictEntry("a", "อา", 140),
-    DictEntry("ai", "ไอ", 130), DictEntry("ay", "ไอ", 130),
-]
-
-DICTIONARY = BASE_DICTIONARY + COMPOUND_WORDS + AI_IRREGULARS + VOWEL_SUGGESTIONS
+DICTIONARY = BASE_DICTIONARY + COMPOUND_WORDS + AI_IRREGULARS
 DICT_LOOKUP = {e.roman.lower(): e.thai for e in DICTIONARY}
 
 def convert_token(token: str) -> str:
@@ -230,50 +195,24 @@ def convert_token(token: str) -> str:
     if compound: return compound
     return "?"
 
-def alt_onset_suggestions(buffer):
-    roman = buffer.lower()
-    core, _ = split_tone(roman)
-    vowel_key, before, after = match_vowel(core)
-    if not vowel_key and not before: roman_onset, _ = match_prefix(ONSET_KEYS, core)
-    else: roman_onset, _ = match_prefix(ONSET_KEYS, before)
-    if roman_onset not in ALT_ONSET_FORMS: return []
-    default_thai = CONSONANT_ONSET.get(roman_onset, "")
-    base_thai = convert_token(buffer)
-    if not base_thai or base_thai == "?": return []
-    alts = []
-    for alt in ALT_ONSET_FORMS[roman_onset]:
-        if alt == default_thai: continue
-        thai_form = base_thai.replace(default_thai, alt, 1)
-        alts.append(DictEntry(roman=buffer, thai=thai_form, freq=40))
-    return alts
+def convert_phrase(text: str) -> str:
+    return " ".join(convert_token(t) for t in text.split())
 
-def alt_coda_suggestions(buffer):
-    roman = buffer.lower()
-    core, _ = split_tone(roman)
-    vowel_key, _, after = match_vowel(core)
-    if not vowel_key: return [] 
-    coda_key, _ = match_coda(after)
-    if coda_key not in ALT_CODA_FORMS: return []
-    default_coda = CODA_MAP.get(coda_key, "")
-    base_thai = convert_token(buffer)
-    if not base_thai or base_thai == "?": return []
-    base_stem = base_thai[: -len(default_coda)]
-    alts = []
-    for alt in ALT_CODA_FORMS[coda_key]:
-        if alt == default_coda: continue
-        alts.append(DictEntry(roman=buffer, thai=base_stem + alt, freq=35))
-    return alts
+def simple_distance(a, b):
+    a, b = a.lower(), b.lower()
+    if abs(len(a) - len(b)) > 2: return 999
+    n = min(len(a), len(b))
+    diff = sum(a[i] != b[i] for i in range(n))
+    diff += abs(len(a) - len(b))
+    return diff
 
 def suggest(buffer: str, max_suggestions: int = 8) -> List[DictEntry]:
     q = buffer.lower()
     if not q: return []
     q_core = q[:-1] if q[-1] in "12345" else q
     exact_prefix = [e for e in DICTIONARY if e.roman.startswith(q_core)]
-    def simple_distance(a, b):
-        n = min(len(a), len(b))
-        diff = sum(a[i] != b[i] for i in range(n)) + abs(len(a) - len(b))
-        return diff
     fuzzy = [e for e in DICTIONARY if 0 < simple_distance(q_core, e.roman) <= 1]
+    
     seen = set()
     results = []
     def add(entries):
@@ -281,14 +220,8 @@ def suggest(buffer: str, max_suggestions: int = 8) -> List[DictEntry]:
             key = (e.roman, e.thai)
             if key not in seen:
                 seen.add(key); results.append(e)
-    # Add base conversion first if valid
-    base_val = convert_token(q)
-    if base_val and base_val != "?":
-        add([DictEntry(q, base_val, 999)])
     add(exact_prefix)
     add(fuzzy)
-    add(alt_onset_suggestions(buffer))
-    add(alt_coda_suggestions(buffer))
     results.sort(key=lambda e: e.freq, reverse=True)
     return results[:max_suggestions]
 
@@ -296,85 +229,61 @@ def suggest(buffer: str, max_suggestions: int = 8) -> List[DictEntry]:
 # 4. STREAMLIT UI
 # ===============================
 
-st.set_page_config(page_title="Thai IME", page_icon="🇹🇭", layout="centered")
+st.set_page_config(page_title="Thai IME Tester", page_icon="🇹🇭")
 
-# Initialize session state
-if 'draft_text' not in st.session_state:
-    st.session_state['draft_text'] = ""
-if 'input_text' not in st.session_state:
-    st.session_state['input_text'] = ""
+st.title("🇹🇭 Thai Phonetic IME")
+st.markdown("Type Romanized Thai (e.g., *sawatdii*, *khanom*, *thaaw2*) to see the conversion.")
 
-def append_word(word):
-    """Callback to append word and clear input"""
-    if st.session_state['draft_text']:
-        st.session_state['draft_text'] += " " + word
-    else:
-        st.session_state['draft_text'] = word
-    st.session_state['input_text'] = "" # Clear input
+# --- CHEAT SHEET SECTION ---
+with st.expander("📖 Cheat Sheet & Instructions (How to Type)"):
+    tab1, tab2, tab3 = st.tabs(["Tone Mappings", "Consonant Onsets", "Vowels"])
+    
+    with tab1:
+        st.markdown("### Tone Numbers")
+        st.markdown("Type these numbers at the end of a syllable.")
+        tone_data = [{"Key": k, "Tone": v} for k, v in TONE_MAP.items()]
+        st.table(tone_data)
 
-# --- SIDEBAR: VOWEL MAPPING (Replaces Common Words) ---
-with st.sidebar:
-    st.title("Vowel Mapping")
-    st.markdown("""
-    | Roman | Pre | Stack | Post | Ex. (k) |
-    | :--- | :---: | :---: | :---: | :--- |
-    | **a** | - | - | ะ | กะ |
-    | **aa** | - | - | า | กา |
-    | **i** | - | ิ | - | กิ |
-    | **ii** | - | ี | - | กี |
-    | **u** | - | ุ | - | กุ |
-    | **uu** | - | ู | - | กู |
-    | **e** | เ | ็ | - | เก็น |
-    | **ee** | เ | - | - | เก |
-    | **o** | โ | - | ะ | โกะ |
-    | **oo** | โ | - | - | โก |
-    | **ae** | แ | - | ะ | แกะ |
-    | **aee** | แ | - | - | แก |
-    | **oe** | เ | - | อะ | เกอะ |
-    | **or** | เ | - | าะ | เกาะ |
-    | **ia** | เ | ี | ย | เกีย |
-    | **ua** | - | ั | ว | กัว |
-    | **ai** | ไ | - | - | ไก |
-    | **aw** | เ | - | า | เกา |
-    | **uea** | เ | ื | อ | เกือ |
-    | **am** | - | - | ำ | กำ |
-    """)
+    with tab2:
+        st.markdown("### Initial Consonants")
+        st.markdown("Sorted by length. Type the **Key** to get the **Thai Char**.")
+        # Convert dictionary to list of dicts for display
+        cons_data = [{"Key": k, "Thai Char": v} for k, v in CONSONANT_ONSET.items()]
+        st.dataframe(cons_data, use_container_width=True)
+    
+    with tab3:
+        st.markdown("### Vowels")
+        st.markdown("Type the **Key** to get the vowel combination.")
+        # Simplify Vowel Map for display (just showing key and components)
+        vowel_disp = []
+        for k, v in VOWEL_MAP.items():
+            pre, main, post = v
+            display_str = f"{pre} - {main} - {post}"
+            vowel_disp.append({"Key": k, "Structure": display_str})
+        st.dataframe(vowel_disp, use_container_width=True)
 
-# --- MAIN PAGE ---
-st.title("🇹🇭 Thai Word Converter")
+# --- MAIN APP ---
+with st.container():
+    roman_input = st.text_input("Roman Input:", placeholder="Type here... (e.g., sabaay, aroy, thaaw2)", key="input")
 
-# 1. Drafting Area
-st.markdown("##### Result Text (Copy/Edit here)")
-text_area = st.text_area(
-    label="Result", 
-    value=st.session_state['draft_text'], 
-    key="draft_text", 
-    height=100,
-    label_visibility="collapsed"
-)
+    if roman_input:
+        # 1. Base Conversion
+        base_thai = convert_phrase(roman_input)
+        
+        st.markdown("### Base Conversion")
+        st.success(f"**{base_thai}**")
 
-# 2. Roman Input
-st.markdown("##### Enter Romanized Thai")
-roman_input = st.text_input(
-    label="Input", 
-    key="input_text", 
-    placeholder="Type here (e.g., sabaay, aroi)...",
-    label_visibility="collapsed"
-)
+        # 2. Suggestions
+        suggestions = suggest(roman_input)
+        
+        st.markdown("### Suggestions")
+        if suggestions:
+            cols = st.columns(3)
+            for i, s in enumerate(suggestions):
+                with cols[i % 3]:
+                    st.button(f"{s.thai} ({s.roman})", key=f"sug_{i}")
+        else:
+            st.caption("No additional suggestions found.")
 
-# 3. Suggestions Buttons
-if roman_input:
-    suggestions = suggest(roman_input)
-    if suggestions:
-        st.markdown(f"**Suggestions for:** `{roman_input}`")
-        cols = st.columns(4)
-        for i, s in enumerate(suggestions):
-            with cols[i % 4]:
-                st.button(
-                    f"{s.thai}\n({s.roman})", 
-                    key=f"btn_{i}", 
-                    on_click=append_word, 
-                    args=(s.thai,)
-                )
-    else:
-        st.caption("No suggestions found.")
+st.markdown("---")
+st.caption("Tip: Check the Cheat Sheet above for Tones (1-5) and specific spellings.")
