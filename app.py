@@ -1,75 +1,55 @@
 import streamlit as st
+# TRY IMPORTING ST_KEYUP (Fall back to text_input if not installed)
+try:
+    from st_keyup import st_keyup
+except ImportError:
+    st.error("Please install the helper library: `pip install streamlit-keyup`")
+    st.stop()
+
 from dataclasses import dataclass
 from typing import List, Optional
 
 # ===============================
-# 1. MAPPINGS
+# 1. MAPPINGS & LOGIC (Same as before)
 # ===============================
 
 CONSONANT_ONSET = {
-    # single consonants
-    "kh": "ข", "k":  "ก", "ph": "ผ", "p":  "ป",
-    "th": "ถ", "t":  "ต", "ch": "ช", "c":  "จ",
-    "j":  "จ", "b":  "บ", "d":  "ด", "f":  "ฟ",
-    "s":  "ส", "h":  "ห", "m":  "ม", "n":  "น",
-    "ng": "ง", "r":  "ร", "l":  "ล", "w":  "ว",
-    "y":  "ย", "?":  "อ",
-    # clusters
+    "kh": "ข", "k":  "ก", "ph": "ผ", "p":  "ป", "th": "ถ", "t":  "ต", "ch": "ช", "c":  "จ",
+    "j":  "จ", "b":  "บ", "d":  "ด", "f":  "ฟ", "s":  "ส", "h":  "ห", "m":  "ม", "n":  "น",
+    "ng": "ง", "r":  "ร", "l":  "ล", "w":  "ว", "y":  "ย", "?":  "อ",
     "pr": "ปร", "phr":"พร", "kr": "กร", "khr":"คร", "tr": "ตร",
     "pl": "ปล", "phl":"พล", "kl": "กล", "khl":"คล", "kw": "กว", "khw":"ขว",
-    # h-leading
     "hng":"หง", "hn": "หน", "hm": "หม", "hy": "หย", "hr": "หร", "hl": "หล", "hw": "หว",
 }
 ONSET_KEYS = sorted(CONSONANT_ONSET.keys(), key=len, reverse=True)
 
 ALT_ONSET_FORMS = {
-    "th": ["ถ", "ท", "ธ", "ฒ", "ฐ"],
-    "ph": ["ผ", "พ", "ภ"],
-    "ch": ["ช", "ฉ", "ฌ"],
-    "s":  ["ส", "ซ", "ศ", "ษ"],
-    "h":  ["ห", "ฮ"],
-    "y":  ["ย", "ญ"],
-    "f":  ["ฟ", "ฝ"],
-    "k":  ["ก", "ไก"], 
-    "kh": ["ข", "ค", "ฆ"],
-    "d":  ["ด", "ฎ"],
-    "t":  ["ต", "ฏ"],
-    "n":  ["น", "ณ"],
-    "l":  ["ล", "ฬ"],
+    "th": ["ถ", "ท", "ธ", "ฒ", "ฐ"], "ph": ["ผ", "พ", "ภ"], "ch": ["ช", "ฉ", "ฌ"],
+    "s":  ["ส", "ซ", "ศ", "ษ"], "h":  ["ห", "ฮ"], "y":  ["ย", "ญ"],
+    "f":  ["ฟ", "ฝ"], "k":  ["ก", "ไก"], "kh": ["ข", "ค", "ฆ"],
+    "d":  ["ด", "ฎ"], "t":  ["ต", "ฏ"], "n":  ["น", "ณ"], "l":  ["ล", "ฬ"],
 }
 
 ALT_CODA_FORMS = {
     "n":  ["น", "ร", "ล", "ญ", "ณ", "ฬ", "รย์"], 
     "t":  ["ด", "ต", "ท", "ธ", "ศ", "ษ", "ส", "จ", "ช", "ซ", "ฎ", "ฏ", "ฐ", "ฑ", "ฒ", "ติ", "ตุ", "ตว์"],
-    "p":  ["บ", "ป", "พ", "ฟ", "ภ", "พธ์"],
-    "k":  ["ก", "ข", "ค", "ฆ", "คร์"],
+    "p":  ["บ", "ป", "พ", "ฟ", "ภ", "พธ์"], "k":  ["ก", "ข", "ค", "ฆ", "คร์"],
 }
 
 VOWEL_MAP = {
-    "a":  ("",  "",   "ะ"), "aa": ("",  "",   "า"),
-    "i":  ("",  "ิ",  ""),  "ii": ("",  "ี",  ""),
-    "u":  ("",  "ุ",  ""),  "uu": ("",  "ู",  ""),
-    "e":  ("เ", "็",  ""),  "ee": ("เ", "",   ""), 
-    "o":  ("โ", "",   "ะ"), "oo": ("โ", "",   ""), 
-    "ae": ("แ", "",   "ะ"), "aee":("แ", "",   ""),
-    "ea": ("แ", "",   "ะ"), "eaa":("แ", "",   ""),
-    "oe": ("เ", "",   "อะ"),"oee":("เ", "",   "อ"),
-    "err":("เ", "",   "อะ"),"er": ("เ", "",   "อ"),
-    "or": ("เ", "",   "าะ"),"orr":("",  "",   "อ"),
-    "ia": ("เ", "ี",  "ย"), "ua": ("", "ั",  "ว"),
-    "ai": ("ไ", "",   ""),  "ay": ("ไ", "",   ""), 
-    "aw": ("เ", "",   "า"), "uea":("เ", "ื", "อ"),
-    "am": ("", "",   "ำ"),    
+    "a":  ("",  "",   "ะ"), "aa": ("",  "",   "า"), "i":  ("",  "ิ",  ""),  "ii": ("",  "ี",  ""),
+    "u":  ("",  "ุ",  ""),  "uu": ("",  "ู",  ""), "e":  ("เ", "็",  ""),  "ee": ("เ", "",   ""), 
+    "o":  ("โ", "",   "ะ"), "oo": ("โ", "",   ""), "ae": ("แ", "",   "ะ"), "aee":("แ", "",   ""),
+    "ea": ("แ", "",   "ะ"), "eaa":("แ", "",   ""), "oe": ("เ", "",   "อะ"),"oee":("เ", "",   "อ"),
+    "err":("เ", "",   "อะ"),"er": ("เ", "",   "อ"), "or": ("เ", "",   "าะ"),"orr":("",  "",   "อ"),
+    "ia": ("เ", "ี",  "ย"), "ua": ("", "ั",  "ว"), "ai": ("ไ", "",   ""),  "ay": ("ไ", "",   ""), 
+    "aw": ("เ", "",   "า"), "uea":("เ", "ื", "อ"), "am": ("", "",   "ำ"),    
 }
 VOWEL_KEYS = sorted(VOWEL_MAP.keys(), key=len, reverse=True)
 
 TONE_MAP = {"1": "", "2": "่", "3": "้", "4": "๊", "5": "๋"}
 CODA_MAP = {"ng": "ง", "k": "ก", "t": "ด", "p": "บ", "m": "ม", "n": "น", "w": "ว", "y": "ย"}
 CODA_KEYS = sorted(CODA_MAP.keys(), key=len, reverse=True)
-
-# ===============================
-# 2. CORE CONVERSION
-# ===============================
 
 def split_tone(s: str):
     if s and s[-1] in TONE_MAP: return s[:-1], TONE_MAP[s[-1]]
@@ -101,7 +81,6 @@ def assemble(onset_thai: str, vowel_key: str, tone: str) -> str:
 def convert_syllable(roman: str) -> Optional[str]:
     roman = roman.lower()
     if not roman: return ""
-
     core, tone = split_tone(roman)
     vowel_key, before, after = match_vowel(core)
     
@@ -121,12 +100,10 @@ def convert_syllable(roman: str) -> Optional[str]:
         onset_thai = onset_thai or "ก"
         if len(onset_thai) > 1: return onset_thai[0] + onset_thai[1] + tone + coda_thai
         return onset_thai + tone + coda_thai
-
     if vowel_key == "a" and coda_thai:
         onset_thai = onset_thai or "ก"
         if len(onset_thai) > 1: return onset_thai[0] + onset_thai[1] + "ั" + tone + coda_thai
         return onset_thai + "ั" + tone + coda_thai
-
     if vowel_key in ("er", "oee") and coda_thai in {"ม", "น", "ง"}:
         onset_thai = onset_thai or "ก"
         if len(onset_thai) > 1: return "เ" + onset_thai[0] + onset_thai[1] + "ิ" + tone + coda_thai
@@ -231,7 +208,6 @@ def convert_token(token: str) -> str:
     return "?"
 
 def convert_phrase(text: str) -> str:
-    """Converts a full phrase/sentence by splitting on spaces."""
     return " ".join(convert_token(t) for t in text.split())
 
 def alt_onset_suggestions(buffer):
@@ -302,36 +278,33 @@ def suggest(buffer: str, max_suggestions: int = 8) -> List[DictEntry]:
 
 st.set_page_config(page_title="Thai IME", page_icon="🇹🇭", layout="centered")
 
-# --- SESSION STATE INITIALIZATION ---
+# Initialize Session State
 if 'draft_text' not in st.session_state:
     st.session_state['draft_text'] = ""
-if 'last_roman' not in st.session_state:
-    st.session_state['last_roman'] = ""
+# We use this key for the st_keyup component
+if 'input_key' not in st.session_state:
+    st.session_state['input_key'] = ""
 
 def append_word(word):
-    """Appends word to draft text"""
+    """Callback to append word and clear input"""
     if st.session_state.draft_text:
         st.session_state.draft_text += " " + word
     else:
         st.session_state.draft_text = word
+    # Clearing the st_keyup input requires resetting its key in session_state
+    st.session_state['input_key'] = ""
 
-def submit_input():
-    """Callback: commits input to draft, stores for suggestions, and clears input"""
-    roman = st.session_state.input_text
-    if roman:
-        # 1. Convert
-        thai_word = convert_phrase(roman)
-        # 2. Append to Draft
+def manual_add():
+    """Fallback if user presses 'Add' button instead of suggestion"""
+    val = st.session_state.get("input_key", "")
+    if val:
+        # Convert best guess
+        thai_word = convert_phrase(val)
         append_word(thai_word)
-        # 3. Save for suggestions display
-        st.session_state.last_roman = roman
-        # 4. Clear Input
-        st.session_state.input_text = ""
 
-# --- SIDEBAR: CHEAT SHEET (3 SECTIONS) ---
+# --- SIDEBAR: CHEAT SHEET ---
 with st.sidebar:
     st.title("Cheat Sheet 📖")
-    
     with st.expander("1. Vowels", expanded=True):
         st.markdown("""
         | Roman | Pre | Stack | Post | Ex. (k) |
@@ -357,7 +330,6 @@ with st.sidebar:
         | **uea** | เ | ื | อ | เกือ |
         | **am** | - | - | ำ | กำ |
         """)
-
     with st.expander("2. Consonants & Tones"):
         st.markdown("""
         **Consonants**
@@ -371,12 +343,11 @@ with st.sidebar:
         * `3` = Falling (้), `4` = High (๊)
         * `5` = Rising (๋)
         """)
-
     with st.expander("3. Tips & Compounds"):
         st.markdown("""
         **Typing Tips**
-        * **Enter Key**: Commits the word and clears the input box.
-        * **Suggestions**: Appear *after* you hit Enter (based on what you just added).
+        * **Live Suggestions**: Suggestions appear as you type!
+        * **Click to Add**: Clicking a button clears the input for the next word.
         """)
 
 # --- MAIN PAGE ---
@@ -391,27 +362,33 @@ st.text_area(
     label_visibility="collapsed"
 )
 
-# 2. Roman Input
+# 2. Roman Input (Instant Search)
 st.markdown("##### Enter Romanized Thai")
-st.text_input(
-    label="Input", 
-    key="input_text", # Linked to session state
-    placeholder="Type (e.g., sabaay) and hit ENTER to add...",
-    label_visibility="collapsed",
-    on_change=submit_input # Triggers commit & clear on Enter
+# st_keyup enables "search as you type"
+roman_input = st_keyup(
+    "Input", 
+    key="input_key", 
+    debounce=200, 
+    label_visibility="collapsed"
 )
 
-# 3. Suggestions (Based on LAST submitted word)
-if st.session_state.last_roman:
-    suggestions = suggest(st.session_state.last_roman)
+# 3. Suggestions Buttons (Live)
+if roman_input:
+    suggestions = suggest(roman_input)
+    
     if suggestions:
-        st.markdown(f"**Alternatives for:** `{st.session_state.last_roman}`")
+        st.caption(f"Suggestions for: `{roman_input}`")
         cols = st.columns(4)
         for i, s in enumerate(suggestions):
             with cols[i % 4]:
+                # On click: Appends word -> Clears 'input_key' -> Reruns app
                 st.button(
                     f"{s.thai}\n({s.roman})", 
                     key=f"btn_{i}", 
                     on_click=append_word, 
                     args=(s.thai,)
                 )
+    else:
+        st.caption("No suggestions found.")
+        # Fallback Add Button if no suggestions match
+        st.button("Convert & Add Anyway", on_click=manual_add)
