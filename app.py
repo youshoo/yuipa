@@ -230,6 +230,10 @@ def convert_token(token: str) -> str:
     if compound: return compound
     return "?"
 
+def convert_phrase(text: str) -> str:
+    """Converts a full phrase/sentence by splitting on spaces."""
+    return " ".join(convert_token(t) for t in text.split())
+
 def alt_onset_suggestions(buffer):
     roman = buffer.lower()
     core, _ = split_tone(roman)
@@ -301,18 +305,33 @@ st.set_page_config(page_title="Thai IME", page_icon="🇹🇭", layout="centered
 # --- SESSION STATE INITIALIZATION ---
 if 'draft_text' not in st.session_state:
     st.session_state['draft_text'] = ""
+if 'last_roman' not in st.session_state:
+    st.session_state['last_roman'] = ""
 
 def append_word(word):
+    """Appends word to draft text"""
     if st.session_state.draft_text:
         st.session_state.draft_text += " " + word
     else:
         st.session_state.draft_text = word
 
+def submit_input():
+    """Callback: commits input to draft, stores for suggestions, and clears input"""
+    roman = st.session_state.input_text
+    if roman:
+        # 1. Convert
+        thai_word = convert_phrase(roman)
+        # 2. Append to Draft
+        append_word(thai_word)
+        # 3. Save for suggestions display
+        st.session_state.last_roman = roman
+        # 4. Clear Input
+        st.session_state.input_text = ""
+
 # --- SIDEBAR: CHEAT SHEET (3 SECTIONS) ---
 with st.sidebar:
     st.title("Cheat Sheet 📖")
     
-    # Section 1: Vowels
     with st.expander("1. Vowels", expanded=True):
         st.markdown("""
         | Roman | Pre | Stack | Post | Ex. (k) |
@@ -339,7 +358,6 @@ with st.sidebar:
         | **am** | - | - | ำ | กำ |
         """)
 
-    # Section 2: Consonants & Tones
     with st.expander("2. Consonants & Tones"):
         st.markdown("""
         **Consonants**
@@ -348,28 +366,17 @@ with st.sidebar:
         * `t` = ต, `th` = ถ
         * `ng` = ง, `ch` = ช
         
-        **Tones (Add to end of word)**
-        * `1` = Mid (none)
-        * `2` = Low (่)
-        * `3` = Falling (้)
-        * `4` = High (๊)
+        **Tones**
+        * `1` = Mid, `2` = Low (่)
+        * `3` = Falling (้), `4` = High (๊)
         * `5` = Rising (๋)
-        
-        *Ex: `thaaw2` → ถั่ว*
         """)
 
-    # Section 3: Special Rules
     with st.expander("3. Tips & Compounds"):
         st.markdown("""
-        **Compound Words**
-        * Type naturally: `sawatdii`, `aroi`, `phuying`.
-        * The tool auto-detects common words.
-        
-        **Pseudo-Clusters**
-        * Words like `sabay` (สบาย) or `thanon` (ถนน) don't need tone marks on the first syllable.
-        
-        **Drafting**
-        * Click any **Suggestion Button** to add the word to your result box.
+        **Typing Tips**
+        * **Enter Key**: Commits the word and clears the input box.
+        * **Suggestions**: Appear *after* you hit Enter (based on what you just added).
         """)
 
 # --- MAIN PAGE ---
@@ -386,17 +393,19 @@ st.text_area(
 
 # 2. Roman Input
 st.markdown("##### Enter Romanized Thai")
-roman_input = st.text_input(
+st.text_input(
     label="Input", 
-    placeholder="Type here (e.g., sabaay, aroi)...",
-    label_visibility="collapsed"
+    key="input_text", # Linked to session state
+    placeholder="Type (e.g., sabaay) and hit ENTER to add...",
+    label_visibility="collapsed",
+    on_change=submit_input # Triggers commit & clear on Enter
 )
 
-# 3. Suggestions Buttons
-if roman_input:
-    suggestions = suggest(roman_input)
+# 3. Suggestions (Based on LAST submitted word)
+if st.session_state.last_roman:
+    suggestions = suggest(st.session_state.last_roman)
     if suggestions:
-        st.markdown(f"**Suggestions for:** `{roman_input}`")
+        st.markdown(f"**Alternatives for:** `{st.session_state.last_roman}`")
         cols = st.columns(4)
         for i, s in enumerate(suggestions):
             with cols[i % 4]:
@@ -406,5 +415,3 @@ if roman_input:
                     on_click=append_word, 
                     args=(s.thai,)
                 )
-    else:
-        st.caption("No suggestions found.")
