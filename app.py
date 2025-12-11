@@ -1,5 +1,4 @@
 import streamlit as st
-# TRY IMPORTING ST_KEYUP (Fall back to text_input if not installed)
 try:
     from st_keyup import st_keyup
 except ImportError:
@@ -10,7 +9,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 # ===============================
-# 1. MAPPINGS & LOGIC (Same as before)
+# 1. MAPPINGS & LOGIC
 # ===============================
 
 CONSONANT_ONSET = {
@@ -281,28 +280,28 @@ st.set_page_config(page_title="Thai IME", page_icon="🇹🇭", layout="centered
 # Initialize Session State
 if 'draft_text' not in st.session_state:
     st.session_state['draft_text'] = ""
-# We use this key for the st_keyup component
-if 'input_key' not in st.session_state:
-    st.session_state['input_key'] = ""
+if 'input_counter' not in st.session_state:
+    st.session_state['input_counter'] = 0
 
 def append_word(word):
-    """Callback to append word and clear input"""
+    """Callback to append word and force reset input"""
     if st.session_state.draft_text:
         st.session_state.draft_text += " " + word
     else:
         st.session_state.draft_text = word
-    # Clearing the st_keyup input requires resetting its key in session_state
-    st.session_state['input_key'] = ""
+    # INCREMENT THE COUNTER TO FORCE A FRESH WIDGET
+    st.session_state.input_counter += 1
 
 def manual_add():
     """Fallback if user presses 'Add' button instead of suggestion"""
-    val = st.session_state.get("input_key", "")
+    # We must access the widget by its dynamic key
+    dynamic_key = f"input_{st.session_state.input_counter}"
+    val = st.session_state.get(dynamic_key, "")
     if val:
-        # Convert best guess
         thai_word = convert_phrase(val)
         append_word(thai_word)
 
-# --- SIDEBAR: CHEAT SHEET ---
+# --- SIDEBAR ---
 with st.sidebar:
     st.title("Cheat Sheet 📖")
     with st.expander("1. Vowels", expanded=True):
@@ -347,13 +346,12 @@ with st.sidebar:
         st.markdown("""
         **Typing Tips**
         * **Live Suggestions**: Suggestions appear as you type!
-        * **Click to Add**: Clicking a button clears the input for the next word.
+        * **Click to Add**: Clicking a button automatically clears the input for the next word.
         """)
 
 # --- MAIN PAGE ---
 st.title("🇹🇭 Thai Word Converter")
 
-# 1. Result Text
 st.markdown("##### Result Text")
 st.text_area(
     label="Result",
@@ -362,33 +360,32 @@ st.text_area(
     label_visibility="collapsed"
 )
 
-# 2. Roman Input (Instant Search)
 st.markdown("##### Enter Romanized Thai")
-# st_keyup enables "search as you type"
+
+# GENERATE DYNAMIC KEY
+current_key = f"input_{st.session_state.input_counter}"
+
+# Use st_keyup with the dynamic key
 roman_input = st_keyup(
     "Input", 
-    key="input_key", 
+    key=current_key, 
     debounce=200, 
     label_visibility="collapsed"
 )
 
-# 3. Suggestions Buttons (Live)
 if roman_input:
     suggestions = suggest(roman_input)
-    
     if suggestions:
         st.caption(f"Suggestions for: `{roman_input}`")
         cols = st.columns(4)
         for i, s in enumerate(suggestions):
             with cols[i % 4]:
-                # On click: Appends word -> Clears 'input_key' -> Reruns app
                 st.button(
                     f"{s.thai}\n({s.roman})", 
-                    key=f"btn_{i}", 
+                    key=f"btn_{i}_{st.session_state.input_counter}", # Unique key per refresh
                     on_click=append_word, 
                     args=(s.thai,)
                 )
     else:
         st.caption("No suggestions found.")
-        # Fallback Add Button if no suggestions match
         st.button("Convert & Add Anyway", on_click=manual_add)
